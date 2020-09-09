@@ -14,9 +14,8 @@ import Foundation
 /// - `OutputTypes.Scalar`: Will return `Unicode.Scalar` values
 /// - `OutputTypes.Character`: Will return `Character` values
 /// - `OutputTypes.Raw`: Will return `UInt8` values
-public final class RawInput<OutputType: RawInputOutputType> {
-    public typealias _OutputType = OutputType
-    public typealias Observer = (OutputType.Value) -> Void
+public final class RawInput {
+    public typealias Observer = (String) -> Void
     
     private let stdin: FileHandle = .standardInput
     private var restore: termios!
@@ -50,9 +49,14 @@ public final class RawInput<OutputType: RawInputOutputType> {
         
         DispatchQueue.main.async {
             var rawValue: UInt8 = 0
+            var buffer: [UInt8] = []
             while read(self.stdin.fileDescriptor, &rawValue, 1) == 1 {
                 guard rawValue != 0x04 else { break }
-                _ = self.observers.map { $0(OutputType.map(rawValue)) }
+                buffer.append(rawValue)
+                if let value = String(bytes: buffer, encoding: .utf8) {
+                    self.observers.forEach({ $0(value) })
+                    buffer = []
+                }
             }
         }
     }
@@ -104,9 +108,9 @@ fileprivate final class _RawInput {
 }
 
 extension RawInput {
-    public static func observe(as outputType: OutputType.Type = _OutputType.self, handler observer: @escaping RawInput<OutputType>.Observer) {
-        guard let input = _RawInput.instance as? RawInput<OutputType> else {
-            _RawInput.instance = RawInput<OutputType>()
+    public static func observe(handler observer: @escaping RawInput.Observer) {
+        guard let input = _RawInput.instance as? RawInput else {
+            _RawInput.instance = RawInput()
             RawInput.observe(handler: observer)
             return
         }

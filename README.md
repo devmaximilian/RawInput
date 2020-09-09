@@ -7,7 +7,7 @@ A description of this package.
 ```swift
 import RawInput
 
-RawInput.observe(as: OutputTypes.Character.self) { value in
+RawInput.observe { value in
     print(value)
 }
 
